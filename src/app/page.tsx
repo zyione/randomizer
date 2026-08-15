@@ -26,10 +26,6 @@ import confetti from 'canvas-confetti';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { TopNav } from '@/components/dashboard/TopNav';
 import { MetricCards } from '@/components/dashboard/MetricCards';
-import { ActivityChart } from '@/components/dashboard/ActivityChart';
-import { CategoryGauge } from '@/components/dashboard/CategoryGauge';
-import { ActivityBarChart } from '@/components/dashboard/ActivityBarChart';
-import { EngineRadarChart } from '@/components/dashboard/EngineRadarChart';
 
 import { AnimationContainer } from '@/components/animations/AnimationContainer';
 import { PrizeWheel } from '@/components/wheel/PrizeWheel';
@@ -48,7 +44,6 @@ import {
   Check,
   RotateCcw,
   Layers,
-  MoreVertical,
 } from 'lucide-react';
 import { getRandomColor } from '@/lib/importers';
 
@@ -360,7 +355,7 @@ export default function DashboardPage() {
         />
 
         {/* Dashboard Main Workspace */}
-        <main className="flex-1 p-6 space-y-6 overflow-y-auto">
+        <main className="flex-1 p-6 space-y-6 overflow-y-auto max-w-6xl w-full mx-auto">
           {/* Sub-Header matching reference image */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#22242b] pb-4">
             <div>
@@ -396,133 +391,120 @@ export default function DashboardPage() {
             sessionPicksCount={history.length}
           />
 
-          {/* MODE 1: SINGLE RANDOMIZER (Main Analytics Dashboard View) */}
+          {/* MODE 1: SINGLE RANDOMIZER */}
           {mode === 'single' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Main Card (Top Left - Spans 2 Columns) */}
-              <div className="lg:col-span-2 rounded-xl bg-[#1a1b20] border border-[#262830] p-5 flex flex-col justify-between shadow-sm">
-                <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-slate-200">
-                        Randomize Arena
-                      </span>
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        | Engine: {settings.animationStyle}
-                      </span>
-                    </div>
-
-                    {/* Engine Pill Switchers */}
-                    <div className="flex items-center gap-1 bg-[#121316] p-1 rounded-lg border border-[#262830]">
-                      {[
-                        { id: 'slot-machine', label: 'Slot', icon: '🎰' },
-                        { id: 'card-flip', label: 'Cards', icon: '🃏' },
-                        { id: 'scramble-decode', label: 'Scramble', icon: '💻' },
-                        { id: 'particle-burst', label: 'Burst', icon: '💥' },
-                        { id: 'roulette-strip', label: 'Roulette', icon: '🎡' },
-                      ].map((style) => (
-                        <button
-                          key={style.id}
-                          onClick={() =>
-                            handleSaveSettings({
-                              ...settings,
-                              animationStyle: style.id as AnimationStyle,
-                            })
-                          }
-                          className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all ${
-                            settings.animationStyle === style.id
-                              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                              : 'text-slate-400 hover:text-slate-200'
-                          }`}
-                        >
-                          <span>{style.icon}</span>
-                          <span>{style.label}</span>
-                        </button>
-                      ))}
-                    </div>
+            <div className="space-y-6">
+              {/* Main Randomize Arena Card */}
+              <div className="rounded-xl bg-[#1a1b20] border border-[#262830] p-6 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6 border-b border-[#23252d] pb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-200">
+                      Randomize Arena
+                    </span>
+                    <span className="text-xs text-slate-500 font-mono">
+                      | Active Engine: {settings.animationStyle}
+                    </span>
                   </div>
 
-                  {/* Active Visualizer Arena */}
-                  <div className="w-full min-h-[260px] flex items-center justify-center my-2">
-                    {activeList.items.length === 0 ? (
-                      <div className="text-center py-12 text-xs text-slate-500">
-                        No items in this list. Add items below to start!
-                      </div>
-                    ) : (
-                      <AnimationContainer
-                        style={settings.animationStyle}
-                        items={activeList.items}
-                        winningItem={winningItem || activeList.items[0]}
-                        duration={settings.animationDuration}
-                        isSpinning={isSpinning}
-                        onComplete={handleSingleComplete}
-                      />
-                    )}
+                  {/* Engine Pill Switchers */}
+                  <div className="flex flex-wrap items-center gap-1 bg-[#121316] p-1 rounded-lg border border-[#262830]">
+                    {[
+                      { id: 'slot-machine', label: 'Slot Reel', icon: '🎰' },
+                      { id: 'card-flip', label: '3D Cards', icon: '🃏' },
+                      { id: 'scramble-decode', label: 'Matrix Scramble', icon: '💻' },
+                      { id: 'particle-burst', label: 'Particle Burst', icon: '💥' },
+                      { id: 'roulette-strip', label: 'Roulette Strip', icon: '🎡' },
+                    ].map((style) => (
+                      <button
+                        key={style.id}
+                        onClick={() =>
+                          handleSaveSettings({
+                            ...settings,
+                            animationStyle: style.id as AnimationStyle,
+                          })
+                        }
+                        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                          settings.animationStyle === style.id
+                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <span>{style.icon}</span>
+                        <span>{style.label}</span>
+                      </button>
+                    ))}
                   </div>
+                </div>
 
-                  {/* Trigger Action & Hotkey */}
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-4">
-                    <button
-                      onClick={triggerSingleRandomize}
-                      disabled={isSpinning || activeList.items.length === 0}
-                      className="group relative inline-flex items-center justify-center gap-2.5 w-full sm:w-72 rounded-xl bg-gradient-to-r from-cyan-500 via-teal-400 to-cyan-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-[0_0_25px_rgba(45,212,191,0.3)] transition-all hover:scale-[1.01] hover:shadow-[0_0_35px_rgba(45,212,191,0.5)] disabled:opacity-50 disabled:pointer-events-none active:scale-[0.99]"
-                    >
-                      <Sparkles className={`h-4 w-4 ${isSpinning ? 'animate-spin' : ''}`} />
-                      <span>{isSpinning ? 'SELECTING ITEM...' : 'RANDOMIZE'}</span>
-                      <span className="text-[9px] font-mono opacity-80 bg-slate-950/20 px-1.5 py-0.5 rounded">
-                        SPACE
-                      </span>
-                    </button>
-                  </div>
-
-                  {/* Winner Card */}
-                  {winningItem && !isSpinning && (
-                    <div className="mt-4 rounded-xl border border-cyan-400/30 bg-[#14161c] p-4 text-center shadow-[0_0_20px_rgba(45,212,191,0.15)] animate-fade-in">
-                      <div className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest mb-1">
-                        SELECTED WINNER
-                      </div>
-                      <h3 className="text-xl font-bold text-slate-100">
-                        {winningItem.text}
-                      </h3>
-                      {winningItem.subtitle && (
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          {winningItem.subtitle}
-                        </p>
-                      )}
-                      <div className="mt-3 flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleCopyResult(winningItem.text)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1 text-xs text-slate-300 hover:text-white"
-                        >
-                          {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-                          <span>{copied ? 'Copied' : 'Copy'}</span>
-                        </button>
-                      </div>
+                {/* Active Visualizer Arena */}
+                <div className="w-full min-h-[300px] flex items-center justify-center my-4">
+                  {activeList.items.length === 0 ? (
+                    <div className="text-center py-16 text-xs text-slate-500">
+                      No items in this list. Add items below to start!
                     </div>
+                  ) : (
+                    <AnimationContainer
+                      style={settings.animationStyle}
+                      items={activeList.items}
+                      winningItem={winningItem || activeList.items[0]}
+                      duration={settings.animationDuration}
+                      isSpinning={isSpinning}
+                      onComplete={handleSingleComplete}
+                    />
                   )}
                 </div>
 
-                {/* Smooth Activity Wave Curve Chart at the bottom */}
-                <ActivityChart />
+                {/* Trigger Action & Hotkey */}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6">
+                  <button
+                    onClick={triggerSingleRandomize}
+                    disabled={isSpinning || activeList.items.length === 0}
+                    className="group relative inline-flex items-center justify-center gap-2.5 w-full sm:w-80 rounded-xl bg-gradient-to-r from-cyan-500 via-teal-400 to-cyan-400 px-8 py-3.5 text-base font-bold text-slate-950 shadow-[0_0_25px_rgba(45,212,191,0.3)] transition-all hover:scale-[1.01] hover:shadow-[0_0_35px_rgba(45,212,191,0.5)] disabled:opacity-50 disabled:pointer-events-none active:scale-[0.99]"
+                  >
+                    <Sparkles className={`h-4 w-4 ${isSpinning ? 'animate-spin' : ''}`} />
+                    <span>{isSpinning ? 'SELECTING ITEM...' : 'RANDOMIZE'}</span>
+                    <span className="text-[10px] font-mono opacity-80 bg-slate-950/20 px-2 py-0.5 rounded ml-1">
+                      SPACE
+                    </span>
+                  </button>
+                </div>
+
+                {/* Winner Card */}
+                {winningItem && !isSpinning && (
+                  <div className="mt-6 rounded-xl border border-cyan-400/30 bg-[#14161c] p-5 text-center shadow-[0_0_25px_rgba(45,212,191,0.15)] animate-fade-in max-w-lg mx-auto">
+                    <div className="text-xs font-mono text-cyan-400 uppercase tracking-widest mb-1.5">
+                      SELECTED WINNER
+                    </div>
+                    <h3 className="text-2xl font-black text-slate-100">
+                      {winningItem.text}
+                    </h3>
+                    {winningItem.subtitle && (
+                      <p className="text-xs text-slate-400 mt-1">
+                        {winningItem.subtitle}
+                      </p>
+                    )}
+                    <div className="mt-4 flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => handleCopyResult(winningItem.text)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-3.5 py-1.5 text-xs text-slate-300 hover:text-white transition-colors"
+                      >
+                        {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                        <span>{copied ? 'Copied' : 'Copy'}</span>
+                      </button>
+                      <button
+                        onClick={triggerSingleRandomize}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 px-3.5 py-1.5 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/30 transition-colors"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        <span>Reroll</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Top Right Card: Picks by category gauge */}
-              <div className="lg:col-span-1">
-                <CategoryGauge />
-              </div>
-
-              {/* Bottom Left Card: Picks Timeline bar chart */}
-              <div className="lg:col-span-2">
-                <ActivityBarChart />
-              </div>
-
-              {/* Bottom Right Card: Engine radar distribution chart */}
-              <div className="lg:col-span-1">
-                <EngineRadarChart />
-              </div>
-
-              {/* Full Width Active Pool Items Card */}
-              <div className="lg:col-span-3 rounded-xl bg-[#1a1b20] border border-[#262830] p-5 shadow-sm">
+              {/* Pool Items Management Card */}
+              <div className="rounded-xl bg-[#1a1b20] border border-[#262830] p-5 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <Layers className="h-4 w-4 text-cyan-400" />
@@ -551,11 +533,11 @@ export default function DashboardPage() {
                     value={quickNewItem}
                     onChange={(e) => setQuickNewItem(e.target.value)}
                     placeholder="Type an item to quickly add to this list..."
-                    className="flex-1 rounded-lg bg-[#111215] border border-[#262830] px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-cyan-500/60"
+                    className="flex-1 rounded-lg bg-[#111215] border border-[#262830] px-3.5 py-2 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-cyan-500/60"
                   />
                   <button
                     type="submit"
-                    className="inline-flex items-center gap-1 rounded-lg bg-cyan-500 px-3.5 py-1.5 text-xs font-bold text-slate-950 hover:bg-cyan-400 transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-400 transition-colors"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     <span>Add</span>
@@ -563,7 +545,7 @@ export default function DashboardPage() {
                 </form>
 
                 {/* Item Pills */}
-                <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-1">
+                <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-1">
                   {activeList.items.map((item) => (
                     <div
                       key={item.id}
