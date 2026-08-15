@@ -23,7 +23,14 @@ import {
 } from '@/lib/storage';
 import { soundFx } from '@/lib/audio';
 import confetti from 'canvas-confetti';
-import { Header } from '@/components/Header';
+import { Sidebar } from '@/components/dashboard/Sidebar';
+import { TopNav } from '@/components/dashboard/TopNav';
+import { MetricCards } from '@/components/dashboard/MetricCards';
+import { ActivityChart } from '@/components/dashboard/ActivityChart';
+import { CategoryGauge } from '@/components/dashboard/CategoryGauge';
+import { ActivityBarChart } from '@/components/dashboard/ActivityBarChart';
+import { EngineRadarChart } from '@/components/dashboard/EngineRadarChart';
+
 import { AnimationContainer } from '@/components/animations/AnimationContainer';
 import { PrizeWheel } from '@/components/wheel/PrizeWheel';
 import { DualRandomizer } from '@/components/dual/DualRandomizer';
@@ -34,21 +41,18 @@ import { HistoryDrawer } from '@/components/history/HistoryDrawer';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 import {
   Sparkles,
-  Shuffle,
+  RotateCw,
   Plus,
   Trash2,
   Copy,
   Check,
   RotateCcw,
-  Sliders,
-  ExternalLink,
-  ChevronRight,
-  Flame,
   Layers,
+  MoreVertical,
 } from 'lucide-react';
 import { getRandomColor } from '@/lib/importers';
 
-export default function RandomizerApp() {
+export default function DashboardPage() {
   const [isClient, setIsClient] = useState(false);
   const [lists, setLists] = useState<ItemList[]>([]);
   const [activeListId, setActiveListId] = useState<string>('');
@@ -56,12 +60,14 @@ export default function RandomizerApp() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [mode, setMode] = useState<AppMode>('single');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Single Randomizer States
   const [isSpinning, setIsSpinning] = useState(false);
   const [winningItem, setWinningItem] = useState<Item | null>(null);
   const [copied, setCopied] = useState(false);
   const [quickNewItem, setQuickNewItem] = useState('');
+  const [lastRandomizedTime, setLastRandomizedTime] = useState('Today, 20:30');
 
   // Modals & Drawers
   const [isListDrawerOpen, setIsListDrawerOpen] = useState(false);
@@ -101,20 +107,17 @@ export default function RandomizerApp() {
   const secondaryList =
     lists.find((l) => l.id === secondaryListId) || lists[1] || lists[0];
 
-  // Helper to persist list updates
   const updateLists = (newLists: ItemList[]) => {
     setLists(newLists);
     saveSavedLists(newLists);
   };
 
-  // Helper to persist settings
   const handleSaveSettings = (newSettings: AppSettings) => {
     setSettings(newSettings);
     saveSettings(newSettings);
     soundFx.setConfig(newSettings.soundEnabled, newSettings.soundVolume);
   };
 
-  // Quick sound mute toggle
   const toggleSound = () => {
     handleSaveSettings({
       ...settings,
@@ -126,16 +129,18 @@ export default function RandomizerApp() {
   const triggerSingleRandomize = useCallback(() => {
     if (isSpinning || !activeList || activeList.items.length === 0) return;
 
-    // Pick random item
     const randomIndex = Math.floor(Math.random() * activeList.items.length);
     const chosen = activeList.items[randomIndex];
 
     setWinningItem(chosen);
     setIsSpinning(true);
     setCopied(false);
+    setLastRandomizedTime(
+      new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    );
   }, [isSpinning, activeList]);
 
-  // Keyboard shortcut: Spacebar triggers randomize
+  // Spacebar hotkey
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -156,11 +161,9 @@ export default function RandomizerApp() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [mode, triggerSingleRandomize, isListModalOpen, isApiModalOpen, isSettingsModalOpen]);
 
-  // Single Randomize Complete Callback
   const handleSingleComplete = () => {
     setIsSpinning(false);
     if (winningItem && activeList) {
-      // Record history
       const entry: HistoryEntry = {
         id: `hist-${Date.now()}`,
         listId: activeList.id,
@@ -173,19 +176,17 @@ export default function RandomizerApp() {
       const updatedHistory = addHistoryEntry(entry);
       setHistory(updatedHistory);
 
-      // Trigger Confetti
       try {
         confetti({
-          particleCount: 65,
-          spread: 70,
+          particleCount: 60,
+          spread: 65,
           origin: { y: 0.6 },
-          colors: ['#00f2fe', '#8b5cf6', '#ec4899', '#10b981'],
+          colors: ['#2dd4bf', '#8b5cf6', '#ec4899', '#10b981'],
         });
       } catch {}
     }
   };
 
-  // Wheel Winner Callback
   const handleWheelWinner = (item: Item) => {
     if (!activeList) return;
     const entry: HistoryEntry = {
@@ -201,7 +202,6 @@ export default function RandomizerApp() {
     setHistory(updatedHistory);
   };
 
-  // Dual Result Callback
   const handleDualResult = (
     item1: Item,
     item2: Item,
@@ -225,7 +225,6 @@ export default function RandomizerApp() {
     setHistory(updatedHistory);
   };
 
-  // Quick Add Item
   const handleQuickAddItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickNewItem.trim() || !activeList) return;
@@ -245,7 +244,6 @@ export default function RandomizerApp() {
     setQuickNewItem('');
   };
 
-  // Delete Item from List
   const handleDeleteItem = (itemId: string) => {
     if (!activeList) return;
     const updatedLists = lists.map((l) =>
@@ -256,7 +254,6 @@ export default function RandomizerApp() {
     updateLists(updatedLists);
   };
 
-  // List Management Handlers
   const handleSaveList = (savedList: ItemList) => {
     const exists = lists.some((l) => l.id === savedList.id);
     const updatedLists = exists
@@ -270,7 +267,7 @@ export default function RandomizerApp() {
   };
 
   const handleDeleteList = (id: string) => {
-    if (confirm('Are you sure you want to delete this list?')) {
+    if (confirm('Delete this list?')) {
       const remaining = lists.filter((l) => l.id !== id);
       updateLists(remaining);
       if (activeListId === id && remaining.length > 0) {
@@ -316,284 +313,309 @@ export default function RandomizerApp() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleClearAllHistory = () => {
-    if (confirm('Clear all pick history?')) {
-      clearStoredHistory();
-      setHistory([]);
-    }
-  };
+  const totalPoolItems = lists.reduce((acc, l) => acc + l.items.length, 0);
 
   if (!isClient || !activeList) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-slate-950 text-cyan-400 font-mono text-sm">
-        <Sparkles className="h-6 w-6 animate-spin mr-2" />
-        <span>INITIALIZING RANDOMIZER ENGINES...</span>
+      <div className="flex h-screen w-screen items-center justify-center bg-[#121316] text-cyan-400 font-mono text-xs">
+        <Sparkles className="h-5 w-5 animate-spin mr-2" />
+        <span>INITIALIZING BATTERX DASHBOARD...</span>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#080c14] text-slate-100 flex flex-col selection:bg-cyan-500/30 selection:text-cyan-200">
-      {/* Top Navigation */}
-      <Header
+    <div className="flex min-h-screen bg-[#121316] text-slate-100 selection:bg-cyan-500/30 selection:text-cyan-200">
+      {/* Left Dark Sidebar */}
+      <Sidebar
         mode={mode}
         onModeChange={(m) => {
           setMode(m);
-          setWinningItem(null);
-        }}
-        activeList={activeList}
-        lists={lists}
-        onSelectList={(id) => {
-          setActiveListId(id);
-          saveActiveListId(id);
           setWinningItem(null);
         }}
         onOpenListManager={() => setIsListDrawerOpen(true)}
         onOpenApiModal={() => setIsApiModalOpen(true)}
         onOpenHistory={() => setIsHistoryDrawerOpen(true)}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
-        soundEnabled={settings.soundEnabled}
-        onToggleSound={toggleSound}
+        activeListTitle={activeList.title}
+        listCount={lists.length}
         historyCount={history.length}
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col items-center">
-        {/* Active List Info Banner */}
-        <div className="w-full max-w-3xl mb-6 flex items-center justify-between gap-3 bg-slate-900/60 border border-slate-800 rounded-2xl p-4 backdrop-blur-md">
-          <div className="flex items-center gap-3">
-            <span
-              className="h-3.5 w-3.5 rounded-full flex-shrink-0"
-              style={{ backgroundColor: activeList.color || '#00f2fe' }}
-            />
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top Bar */}
+        <TopNav
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          soundEnabled={settings.soundEnabled}
+          onToggleSound={toggleSound}
+          activeList={activeList}
+          lists={lists}
+          onSelectList={(id) => {
+            setActiveListId(id);
+            saveActiveListId(id);
+            setWinningItem(null);
+          }}
+        />
+
+        {/* Dashboard Main Workspace */}
+        <main className="flex-1 p-6 space-y-6 overflow-y-auto">
+          {/* Sub-Header matching reference image */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#22242b] pb-4">
             <div>
-              <h1 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-                {activeList.title}
-                {activeList.isPreset && (
-                  <span className="rounded bg-slate-800 px-2 py-0.5 text-[10px] font-mono text-slate-400">
-                    Preset
-                  </span>
-                )}
+              <h1 className="text-xl font-bold text-slate-100 tracking-tight">
+                Dashboard
               </h1>
-              {activeList.description && (
-                <p className="text-xs text-slate-400 mt-0.5">{activeList.description}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsListDrawerOpen(true)}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-colors"
-            >
-              <span>{activeList.items.length} items</span>
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* MODE 1: SINGLE RANDOMIZER */}
-        {mode === 'single' && (
-          <div className="w-full max-w-3xl flex flex-col items-center">
-            {/* Animation Quick Switcher Bar */}
-            <div className="mb-6 flex flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-slate-800 bg-slate-900/80 p-1.5 backdrop-blur-md">
-              <span className="text-[10px] font-mono text-slate-500 px-2 uppercase tracking-wider hidden sm:inline">
-                Engine:
-              </span>
-              {[
-                { id: 'slot-machine', label: 'Slot Machine', icon: '🎰' },
-                { id: 'card-flip', label: '3D Card Flip', icon: '🃏' },
-                { id: 'scramble-decode', label: 'Matrix Scramble', icon: '💻' },
-                { id: 'particle-burst', label: 'Particle Burst', icon: '💥' },
-                { id: 'roulette-strip', label: 'Roulette Strip', icon: '🎡' },
-              ].map((style) => (
-                <button
-                  key={style.id}
-                  onClick={() =>
-                    handleSaveSettings({
-                      ...settings,
-                      animationStyle: style.id as AnimationStyle,
-                    })
-                  }
-                  className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
-                    settings.animationStyle === style.id
-                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <span>{style.icon}</span>
-                  <span className="hidden sm:inline">{style.label}</span>
-                </button>
-              ))}
+              <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                <span>Last randomized: {lastRandomizedTime}</span>
+                <span>·</span>
+                <span className="text-cyan-400 font-medium">
+                  {activeList.title} ({activeList.items.length} items)
+                </span>
+              </div>
             </div>
 
-            {/* Visualizer Arena */}
-            <div className="w-full min-h-[300px] flex items-center justify-center">
-              {activeList.items.length === 0 ? (
-                <div className="text-center py-16 text-xs text-slate-500">
-                  This list has no items. Add items below to begin!
-                </div>
-              ) : (
-                <AnimationContainer
-                  style={settings.animationStyle}
-                  items={activeList.items}
-                  winningItem={winningItem || activeList.items[0]}
-                  duration={settings.animationDuration}
-                  isSpinning={isSpinning}
-                  onComplete={handleSingleComplete}
-                />
-              )}
-            </div>
-
-            {/* Trigger Controls */}
-            <div className="mt-8 flex flex-col items-center gap-4 w-full px-4">
+            <div className="flex items-center gap-2">
               <button
                 onClick={triggerSingleRandomize}
                 disabled={isSpinning || activeList.items.length === 0}
-                className="group relative inline-flex items-center justify-center gap-3 w-full sm:w-80 rounded-2xl bg-gradient-to-r from-cyan-500 via-teal-400 to-cyan-400 px-8 py-4 text-lg font-black tracking-wider text-slate-950 shadow-[0_0_35px_rgba(0,242,254,0.4)] transition-all hover:scale-[1.02] hover:shadow-[0_0_50px_rgba(0,242,254,0.6)] disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#202229] border border-[#2b2e38] px-3.5 py-1.5 text-xs font-semibold text-slate-300 hover:text-slate-100 hover:border-slate-600 transition-colors"
               >
-                <Sparkles
-                  className={`h-5 w-5 ${
-                    isSpinning
-                      ? 'animate-spin'
-                      : 'group-hover:rotate-45 transition-transform duration-300'
-                  }`}
-                />
-                <span>{isSpinning ? 'RANDOMIZING...' : 'RANDOMIZE'}</span>
-                <span className="hidden sm:inline text-[10px] font-mono font-normal opacity-70 bg-slate-950/20 px-2 py-0.5 rounded ml-1">
-                  SPACE
-                </span>
+                <RotateCw className={`h-3.5 w-3.5 text-cyan-400 ${isSpinning ? 'animate-spin' : ''}`} />
+                <span>Refresh / Pick</span>
               </button>
-
-              {/* Winner Result Card */}
-              {winningItem && !isSpinning && (
-                <div className="w-full rounded-2xl border border-cyan-400/40 bg-slate-950/90 p-5 text-center shadow-[0_0_30px_rgba(0,242,254,0.25)] backdrop-blur-xl animate-fade-in">
-                  <div className="inline-flex items-center gap-1.5 text-xs font-mono text-cyan-400 uppercase tracking-widest mb-1.5">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    <span>SELECTED RESULT</span>
-                  </div>
-                  <h3 className="text-2xl sm:text-3xl font-black text-white drop-shadow-md">
-                    {winningItem.text}
-                  </h3>
-                  {winningItem.subtitle && (
-                    <p className="text-sm font-medium text-slate-400 mt-1">
-                      {winningItem.subtitle}
-                    </p>
-                  )}
-
-                  <div className="mt-4 flex items-center justify-center gap-3">
-                    <button
-                      onClick={() => handleCopyResult(winningItem.text)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900/90 px-3.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
-                    >
-                      {copied ? (
-                        <Check className="h-3.5 w-3.5 text-emerald-400" />
-                      ) : (
-                        <Copy className="h-3.5 w-3.5" />
-                      )}
-                      <span>{copied ? 'Copied' : 'Copy Result'}</span>
-                    </button>
-                    <button
-                      onClick={triggerSingleRandomize}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 px-3.5 py-1.5 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/30 transition-colors"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />
-                      <span>Reroll</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Quick List Item Manager below arena */}
-            <div className="w-full mt-10 rounded-2xl border border-slate-800 bg-slate-900/50 p-5 backdrop-blur-md">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-cyan-400" />
-                  <h4 className="text-sm font-bold text-white">Items in Active List</h4>
-                  <span className="text-xs font-mono text-slate-400">
-                    ({activeList.items.length})
-                  </span>
-                </div>
-                <button
-                  onClick={() => {
-                    setEditingList(activeList);
-                    setIsListModalOpen(true);
-                  }}
-                  className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-colors"
-                >
-                  Edit / Bulk Import
-                </button>
-              </div>
-
-              {/* Inline Quick Add Input */}
-              <form onSubmit={handleQuickAddItem} className="flex gap-2 mb-4">
-                <input
-                  type="text"
-                  value={quickNewItem}
-                  onChange={(e) => setQuickNewItem(e.target.value)}
-                  placeholder="Type an item to add quickly..."
-                  className="flex-1 rounded-xl border border-slate-800 bg-slate-950 px-3.5 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-cyan-400"
-                />
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-1 rounded-xl bg-cyan-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-400 transition-colors"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Add</span>
-                </button>
-              </form>
-
-              {/* Items Tags Pill Grid */}
-              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-1">
-                {activeList.items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="group inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-1.5 text-xs text-slate-200 hover:border-slate-700 transition-colors"
-                  >
-                    <span
-                      className="h-2 w-2 rounded-full"
-                      style={{ backgroundColor: item.color || '#00f2fe' }}
-                    />
-                    <span className="font-medium">{item.text}</span>
-                    <button
-                      onClick={() => handleDeleteItem(item.id)}
-                      className="text-slate-500 hover:text-red-400 opacity-60 group-hover:opacity-100 transition-opacity ml-1"
-                      title="Remove item"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
-        )}
 
-        {/* MODE 2: DUAL RANDOMIZER */}
-        {mode === 'dual' && (
-          <DualRandomizer
-            lists={lists}
-            primaryList={activeList}
-            secondaryList={secondaryList}
-            onSecondaryListChange={(id) => setSecondaryListId(id)}
-            animationStyle={settings.animationStyle}
-            animationDuration={settings.animationDuration}
-            onDualResult={handleDualResult}
+          {/* Top 4 KPI Metrics Strip */}
+          <MetricCards
+            totalPicksCount={history.length}
+            totalItemsCount={totalPoolItems}
+            apiCategoriesCount={6}
+            sessionPicksCount={history.length}
           />
-        )}
 
-        {/* MODE 3: CIRCULAR PRIZE WHEEL */}
-        {mode === 'wheel' && (
-          <PrizeWheel
-            items={activeList.items}
-            duration={settings.animationDuration + 1.5}
-            onWinnerSelected={handleWheelWinner}
-          />
-        )}
-      </main>
+          {/* MODE 1: SINGLE RANDOMIZER (Main Analytics Dashboard View) */}
+          {mode === 'single' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Main Card (Top Left - Spans 2 Columns) */}
+              <div className="lg:col-span-2 rounded-xl bg-[#1a1b20] border border-[#262830] p-5 flex flex-col justify-between shadow-sm">
+                <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-slate-200">
+                        Randomize Arena
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-mono">
+                        | Engine: {settings.animationStyle}
+                      </span>
+                    </div>
 
-      {/* Persistent Slide-over Drawers & Modals */}
+                    {/* Engine Pill Switchers */}
+                    <div className="flex items-center gap-1 bg-[#121316] p-1 rounded-lg border border-[#262830]">
+                      {[
+                        { id: 'slot-machine', label: 'Slot', icon: '🎰' },
+                        { id: 'card-flip', label: 'Cards', icon: '🃏' },
+                        { id: 'scramble-decode', label: 'Scramble', icon: '💻' },
+                        { id: 'particle-burst', label: 'Burst', icon: '💥' },
+                        { id: 'roulette-strip', label: 'Roulette', icon: '🎡' },
+                      ].map((style) => (
+                        <button
+                          key={style.id}
+                          onClick={() =>
+                            handleSaveSettings({
+                              ...settings,
+                              animationStyle: style.id as AnimationStyle,
+                            })
+                          }
+                          className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all ${
+                            settings.animationStyle === style.id
+                              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          <span>{style.icon}</span>
+                          <span>{style.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Active Visualizer Arena */}
+                  <div className="w-full min-h-[260px] flex items-center justify-center my-2">
+                    {activeList.items.length === 0 ? (
+                      <div className="text-center py-12 text-xs text-slate-500">
+                        No items in this list. Add items below to start!
+                      </div>
+                    ) : (
+                      <AnimationContainer
+                        style={settings.animationStyle}
+                        items={activeList.items}
+                        winningItem={winningItem || activeList.items[0]}
+                        duration={settings.animationDuration}
+                        isSpinning={isSpinning}
+                        onComplete={handleSingleComplete}
+                      />
+                    )}
+                  </div>
+
+                  {/* Trigger Action & Hotkey */}
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-4">
+                    <button
+                      onClick={triggerSingleRandomize}
+                      disabled={isSpinning || activeList.items.length === 0}
+                      className="group relative inline-flex items-center justify-center gap-2.5 w-full sm:w-72 rounded-xl bg-gradient-to-r from-cyan-500 via-teal-400 to-cyan-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-[0_0_25px_rgba(45,212,191,0.3)] transition-all hover:scale-[1.01] hover:shadow-[0_0_35px_rgba(45,212,191,0.5)] disabled:opacity-50 disabled:pointer-events-none active:scale-[0.99]"
+                    >
+                      <Sparkles className={`h-4 w-4 ${isSpinning ? 'animate-spin' : ''}`} />
+                      <span>{isSpinning ? 'SELECTING ITEM...' : 'RANDOMIZE'}</span>
+                      <span className="text-[9px] font-mono opacity-80 bg-slate-950/20 px-1.5 py-0.5 rounded">
+                        SPACE
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Winner Card */}
+                  {winningItem && !isSpinning && (
+                    <div className="mt-4 rounded-xl border border-cyan-400/30 bg-[#14161c] p-4 text-center shadow-[0_0_20px_rgba(45,212,191,0.15)] animate-fade-in">
+                      <div className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest mb-1">
+                        SELECTED WINNER
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-100">
+                        {winningItem.text}
+                      </h3>
+                      {winningItem.subtitle && (
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {winningItem.subtitle}
+                        </p>
+                      )}
+                      <div className="mt-3 flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleCopyResult(winningItem.text)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1 text-xs text-slate-300 hover:text-white"
+                        >
+                          {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                          <span>{copied ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Smooth Activity Wave Curve Chart at the bottom */}
+                <ActivityChart />
+              </div>
+
+              {/* Top Right Card: Picks by category gauge */}
+              <div className="lg:col-span-1">
+                <CategoryGauge />
+              </div>
+
+              {/* Bottom Left Card: Picks Timeline bar chart */}
+              <div className="lg:col-span-2">
+                <ActivityBarChart />
+              </div>
+
+              {/* Bottom Right Card: Engine radar distribution chart */}
+              <div className="lg:col-span-1">
+                <EngineRadarChart />
+              </div>
+
+              {/* Full Width Active Pool Items Card */}
+              <div className="lg:col-span-3 rounded-xl bg-[#1a1b20] border border-[#262830] p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-cyan-400" />
+                    <h4 className="text-sm font-bold text-slate-100">
+                      Pool Items in &quot;{activeList.title}&quot;
+                    </h4>
+                    <span className="text-xs font-mono text-slate-500">
+                      ({activeList.items.length} total)
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setEditingList(activeList);
+                      setIsListModalOpen(true);
+                    }}
+                    className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-colors"
+                  >
+                    Edit / Bulk Import CSV
+                  </button>
+                </div>
+
+                {/* Quick Add Form */}
+                <form onSubmit={handleQuickAddItem} className="flex gap-2 mb-4">
+                  <input
+                    type="text"
+                    value={quickNewItem}
+                    onChange={(e) => setQuickNewItem(e.target.value)}
+                    placeholder="Type an item to quickly add to this list..."
+                    className="flex-1 rounded-lg bg-[#111215] border border-[#262830] px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-cyan-500/60"
+                  />
+                  <button
+                    type="submit"
+                    className="inline-flex items-center gap-1 rounded-lg bg-cyan-500 px-3.5 py-1.5 text-xs font-bold text-slate-950 hover:bg-cyan-400 transition-colors"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Add</span>
+                  </button>
+                </form>
+
+                {/* Item Pills */}
+                <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-1">
+                  {activeList.items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="group inline-flex items-center gap-2 rounded-lg bg-[#121316] border border-[#262830] px-3 py-1.5 text-xs text-slate-300 hover:border-slate-600 transition-colors"
+                    >
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ backgroundColor: item.color || '#2dd4bf' }}
+                      />
+                      <span>{item.text}</span>
+                      <button
+                        onClick={() => handleDeleteItem(item.id)}
+                        className="text-slate-500 hover:text-red-400 opacity-60 group-hover:opacity-100 transition-opacity ml-1"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODE 2: DUAL RANDOMIZER */}
+          {mode === 'dual' && (
+            <div className="rounded-xl bg-[#1a1b20] border border-[#262830] p-6 shadow-sm">
+              <DualRandomizer
+                lists={lists}
+                primaryList={activeList}
+                secondaryList={secondaryList}
+                onSecondaryListChange={(id) => setSecondaryListId(id)}
+                animationStyle={settings.animationStyle}
+                animationDuration={settings.animationDuration}
+                onDualResult={handleDualResult}
+              />
+            </div>
+          )}
+
+          {/* MODE 3: PRIZE WHEEL */}
+          {mode === 'wheel' && (
+            <div className="rounded-xl bg-[#1a1b20] border border-[#262830] p-6 shadow-sm">
+              <PrizeWheel
+                items={activeList.items}
+                duration={settings.animationDuration + 1.5}
+                onWinnerSelected={handleWheelWinner}
+              />
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* Persistent Drawers & Modals */}
       <ListManagerDrawer
         isOpen={isListDrawerOpen}
         onClose={() => setIsListDrawerOpen(false)}
@@ -638,7 +660,12 @@ export default function RandomizerApp() {
         isOpen={isHistoryDrawerOpen}
         onClose={() => setIsHistoryDrawerOpen(false)}
         history={history}
-        onClearHistory={handleClearAllHistory}
+        onClearHistory={() => {
+          if (confirm('Clear history?')) {
+            clearStoredHistory();
+            setHistory([]);
+          }
+        }}
       />
 
       <SettingsModal
@@ -647,14 +674,6 @@ export default function RandomizerApp() {
         settings={settings}
         onSaveSettings={handleSaveSettings}
       />
-
-      {/* Footer */}
-      <footer className="w-full border-t border-slate-900 py-6 text-center text-xs text-slate-500 font-mono">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>Randomizer Pro · Local-First Architecture · 5 Pluggable Engines</span>
-          <span>Press [SPACE] anywhere to randomize</span>
-        </div>
-      </footer>
     </div>
   );
 }
